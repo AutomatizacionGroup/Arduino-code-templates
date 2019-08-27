@@ -2,17 +2,22 @@
 #include<WiFi.h>
 #include <DHT.h>
 
+//pin de led
+const int led = 23;
 
 //detalles de la red y de servidor mqtt
 const char* ssid = "avana";
 const char* password = "avana123";
 const char* mqtt_server = "192.168.0.122";
-const char* username = "esp32";
-const char* pass = "password";
+//const char* username = "esp32";
+//const char* pass = "password";
 
 //cliente de wifi y de mqtt
 WiFiClient cliente;
 PubSubClient client(cliente);
+long lastMsg = 0;
+char msg[50];
+int value = 0;
 
 //inicializando sensor
 #define pin 26
@@ -55,6 +60,7 @@ String temperatura(){
     temp = dht.readTemperature();
   }
 
+  Serial.println("medicion de temperatura exitosa");
   //convierte temp a string
   String str = String(temp);
 
@@ -66,18 +72,53 @@ void reconnect(){
 
   //recorrer hasta que se conecte
   while(!client.connected()){
+    Serial.print("intentando conectar a servidor mqtt");
     //id de cliente
     const char* clientId = "esp32_client";
     //intento de conectar
-    if(client.connect(clientId,username,pass)){
-      //una vez conectado, publicar (c_str() convierte el string de temperatura a const char*)
-      client.publish("temp", temperatura().c_str());
+    if(client.connect(clientId)){
+      //una vez conectado, suscribirse
+      Serial.println("conexion exitosa");
+      client.subscribe("esp32/output");
     }
     else{
+      Serial.print("conexion fallida, rc= ");
+      Serial.print(client.state());
+      Serial.println("se reintentara en 5 segundos");
       //esperar 5 segundos antes de reintentar
       delay(5000);
     }
   }
+  
+}
+
+void callback(char* topic, byte* payload, unsigned int length){
+
+  Serial.print("ha llegado mensaje en el topico: ");
+  Serial.print(topic);
+  Serial.print(". Mensaje: ");
+
+  String mensajeTemp;
+
+  //construye string a partir de mensaje y lo imprime
+  for(int i = 0; i < length; i++){
+    Serial.print((char)payload[i]);
+    mensajeTemp += (char)payload[i];
+  }
+  Serial.println();
+
+  if(String(topic) == "esp32/output"){
+    Serial.print("cambiando estado de LED a: ");
+    if(mensajeTemp == "on"){
+      Serial.println("encendido");
+      digitalWrite(led, HIGH);
+    }
+    else{
+      Serial.println("apagado");
+      digitalWrite(led,LOW);
+    }
+  }
+
   
 }
 
@@ -92,6 +133,10 @@ void setup() {
 
   //inicializa servidor mqtt
   client.setServer(mqtt_server,1883);
+  client.setCallback(callback);
+
+  //inicializa output de led
+  pinMode(led, OUTPUT);
 }
 
 void loop() {
@@ -100,4 +145,13 @@ void loop() {
     reconnect();
   }
   client.loop();
+
+  long now = millis();
+  if (now - lastMsg > 5000){
+    lastMsg = now;
+
+    client.publish("esp32/temperature", temperatura().c_str());
+    
+  }
+  
 }
