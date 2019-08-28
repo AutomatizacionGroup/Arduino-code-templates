@@ -3,12 +3,12 @@
 #include <DHT.h>
 
 //pin de led
-const int led = 2;
+const int led = 32;
 
 //detalles de la red y de servidor mqtt
 const char* ssid = "bio";
 const char* password = "biomic1044";
-const char* mqtt_server = "192.168.0.108";
+const char* mqtt_server = "192.168.0.100";
 //const char* username = "919e6710-a6d4-4fe5-a90e-68622d3d1a4a:544c55f8-6d0e-492e-ad90-fde04601cd59";
 //const char* pass = "cIpjAY3G8L7DCJVRxYOjz3K1T";
 
@@ -93,6 +93,7 @@ void reconnect(){
   
 }
 
+//funcion que ejecuta accion segun publicacion a la cual el arduino esta subscrito
 void callback(char* topic, byte* payload, unsigned int length){
 
   Serial.print("ha llegado mensaje en el topico: ");
