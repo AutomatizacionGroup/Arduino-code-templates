@@ -9,8 +9,8 @@ const int led = 32;
 const char* ssid = "bio";
 const char* password = "biomic1044";
 const char* mqtt_server = "192.168.0.100";
-//const char* username = "919e6710-a6d4-4fe5-a90e-68622d3d1a4a:544c55f8-6d0e-492e-ad90-fde04601cd59";
-//const char* pass = "cIpjAY3G8L7DCJVRxYOjz3K1T";
+//const char* username = "";
+//const char* pass = "";
 
 //cliente de wifi y de mqtt
 WiFiClient cliente;
@@ -60,12 +60,27 @@ String temperatura(){
     temp = dht.readTemperature();
   }
 
-  Serial.print("medicion de temperatura exitosa, temperatura = ");
-  Serial.println(temp);
   //convierte temp a string
   String str = String(temp);
 
   return str;
+}
+
+//funcion que mide humdedad del dht11 y la convierte a string
+String humedad(){
+
+  //lee humedad del sensor
+  float hum = dht.readHumidity();
+
+  //verifica que lectura sea un valor valido
+  while(isnan(hum)){
+    delay(2000);
+    hum = dht.readHumidity();
+  }
+
+  String str = String(hum);
+  return str;
+
 }
 
 //funcion que reconecta en caso de que se caiga conexion
@@ -107,7 +122,7 @@ void callback(char* topic, byte* payload, unsigned int length){
     Serial.print((char)payload[i]);
     mensajeTemp += (char)payload[i];
   }
-  Serial.println();
+  Serial.println(mensajeTemp);
 
   if(String(topic) == "esp32/output"){
     Serial.print("cambiando estado de LED a: ");
@@ -128,7 +143,7 @@ void callback(char* topic, byte* payload, unsigned int length){
 void setup() {
 
   //inicia monitor serial a 115200 baudios
-  Serial.begin(115200);
+  Serial.begin(9600);
   
   setup_wifi();
   dht.begin();
@@ -148,11 +163,13 @@ void loop() {
   }
   client.loop();
 
+  //publica cada 5 secs
   long now = millis();
   if (now - lastMsg > 5000){
     lastMsg = now;
 
     client.publish("esp32/temperature", temperatura().c_str());
+    client.publish("esp32/humidity", humedad().c_str());
     
   }
   
